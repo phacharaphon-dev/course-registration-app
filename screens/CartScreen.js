@@ -1,172 +1,194 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, // ✅ เพิ่ม StyleSheet เข้ามาตรงนี้แล้ว
-  SafeAreaView, 
-  TouchableOpacity, 
-  ScrollView, 
-  Image, 
-  ActivityIndicator, 
-  Alert,
-  RefreshControl
-} from 'react-native';
-import { MaterialIcons, Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-
-// 🌟 Import API (ตรวจสอบชื่อฟังก์ชันใน api.js ให้ตรงกันนะครับ)
-import { getCartAPI, removeFromCartAPI } from '../api'; 
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { getCartAPI, removeFromCartAPI, confirmEnrollmentAPI } from "../api";
 
 export default function CartScreen({ student, setView }) {
-  const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [items, setItems] = useState([]);
+  const [loadingCart, setLoadingCart] = useState(false);
 
-  // 🌟 ฟังก์ชันดึงข้อมูลจาก Database
-  const fetchCartData = async () => {
-    if (!student || !student.student_id) {
-        console.log("❌ ไม่พบข้อมูลนักศึกษา (student_id)");
-        setLoading(false);
-        return;
-    }
-
-    try {
-      console.log(`📡 กำลังดึงข้อมูลตะกร้าของ ID: ${student.student_id}`);
-      const data = await getCartAPI(student.student_id);
-      
-      console.log("✅ ข้อมูลที่ได้รับจาก API:", data);
-
-      if (data && Array.isArray(data)) {
-        setCartItems(data);
-      } else {
-        setCartItems([]);
-      }
-    } catch (error) {
-      console.error("❌ Fetch Cart Error:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  // 🌟 โหลดข้อมูลทันทีเมื่อเข้าหน้านี้
   useEffect(() => {
-    fetchCartData();
-  }, [student]); // เพิ่ม student เป็น dependency กันพลาด
+    fetchCart();
+  }, []);
 
-  // ฟังก์ชันลบวิชา
-  const handleDeleteItem = async (courseCode) => {
+  const fetchCart = async () => {
+    setLoadingCart(true);
     try {
-      await removeFromCartAPI(student.student_id, courseCode);
-      fetchCartData(); // โหลดใหม่หลังลบ
-    } catch (error) {
-      Alert.alert("ผิดพลาด", "ไม่สามารถลบวิชาได้");
+      const data = await getCartAPI(student?.student_id);
+      // Grouping Logic ของคุณ
+      const grouped = data.reduce((acc, item) => {
+        const code = item.course_code;
+        if (!code) return acc;
+        if (!acc[code]) {
+          acc[code] = { course_code: code, course_name: item.course_name, time_info: item.time_info || "", sections: [] };
+        }
+        if (!acc[code].sections.includes(item.section_number)) {
+          acc[code].sections.push(item.section_number);
+        }
+        return acc;
+      }, {});
+      setItems(Object.values(grouped));
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setLoadingCart(false);
     }
   };
 
-  // 🌟 คำนวณตัวเลขสรุปด้านบน
-  const totalCourses = cartItems.length;
-  const totalCredits = cartItems.reduce((sum, item) => sum + (parseInt(item.credits || item.course_credits || 0)), 0);
+  const totalCredits = items.reduce((sum, item) => {
+    const c = parseInt(item.credits) || 3;
+    return sum + c;
+  }, 0);
+
+  const removeItem = (courseCode) => {
+    Alert.alert("ลบวิชา", `ต้องการลบ ${courseCode} ออกจากตะกร้าหรือไม่?`, [
+      { text: "ยกเลิก", style: "cancel" },
+      {
+        text: "ลบ",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await removeFromCartAPI(student.student_id, courseCode);
+            setItems((prev) => prev.filter((i) => i.course_code !== courseCode));
+          } catch (e) {
+            Alert.alert("ข้อผิดพลาด", e.message);
+          }
+        },
+      },
+    ]);
+  };
+
+  const confirmRegistration = () => {
+    Alert.alert("ยืนยัน", "ต้องการลงทะเบียนวิชาในตะกร้าทั้งหมดหรือไม่?", [
+      { text: "ยกเลิก", style: "cancel" },
+      {
+        text: "ยืนยัน",
+        onPress: async () => {
+          try {
+            await confirmEnrollmentAPI(student.student_id);
+            Alert.alert("สำเร็จ", "ลงทะเบียนเรียบร้อย!");
+            setView("SCHEDULE"); // ไปหน้าตารางเรียน
+          } catch (e) {
+            Alert.alert("ข้อผิดพลาด", e.message);
+          }
+        },
+      },
+    ]);
+  };
 
   return (
-    <LinearGradient colors={['#FDEEF4', '#FFF8F8']} style={styles.container}>
+    <LinearGradient colors={["#FFDAE4", "#FFF8F8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.3 }} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => setView('MENU')} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="#7b5455" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>ตะกร้าของฉัน</Text>
-          <TouchableOpacity onPress={fetchCartData}>
-            <MaterialIcons name="refresh" size={24} color="#a73355" />
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => setView("MENU")} style={styles.backButton}>
+              <MaterialIcons name="arrow-back" size={24} color="#7b5455" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>ตะกร้าของฉัน</Text>
+          </View>
+          <TouchableOpacity style={styles.bellButton}>
+            <MaterialIcons name="more-vert" size={24} color="#514345" />
           </TouchableOpacity>
         </View>
 
-        {loading ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#a73355" />
-            <Text style={styles.loadingText}>กำลังตรวจสอบข้อมูล...</Text>
-          </View>
-        ) : (
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent} 
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchCartData(); }} />
-            }
-          >
-            
-            {/* 📊 Summary Card */}
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>จำนวนวิชาทั้งหมด</Text>
-                <Text style={styles.summaryValue}>{totalCourses} วิชา</Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>หน่วยกิตรวมประมาณ</Text>
-                <Text style={styles.summaryValue}>{totalCredits} หน่วยกิต</Text>
-              </View>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          
+          {/* Summary Header */}
+          <View style={styles.summaryHeader}>
+            <View>
+              <Text style={styles.summarySub}>CART SUMMARY</Text>
+              <Text style={styles.summaryTitle}>รายการในตะกร้า</Text>
             </View>
+            <View style={styles.summaryRight}>
+              <Text style={styles.totalText}>ทั้งหมด</Text>
+              <Text style={styles.totalCreditsText}>{totalCredits} หน่วยกิต</Text>
+            </View>
+          </View>
 
-            {cartItems.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Image 
-                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2038/2038854.png' }} 
-                  style={styles.emptyImage} 
-                />
-                <Text style={styles.emptyText}>ยังไม่มีวิชาในตะกร้า</Text>
-                <TouchableOpacity style={styles.goBtn} onPress={() => setView('MENU')}>
-                  <Text style={styles.goBtnText}>ไปเลือกวิชาเลย</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.listContainer}>
-                {cartItems.map((item, idx) => (
-                  <View key={idx} style={styles.itemCard}>
-                    <View style={styles.itemHeader}>
-                      <View style={styles.codeBadge}>
-                        <Text style={styles.codeText}>{item.course_code || item.code}</Text>
+          {/* Main Content */}
+          {loadingCart ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color="#D23669" />
+            </View>
+          ) : items.length === 0 ? (
+            <View style={styles.centerContainer}>
+              <MaterialIcons name="remove-shopping-cart" size={64} color="rgba(167, 51, 85, 0.2)" />
+              <Text style={styles.emptyText}>ยังไม่มีวิชาในตะกร้า</Text>
+            </View>
+          ) : (
+            <View style={styles.cardsContainer}>
+              {items.map((item, idx) => (
+                <View key={idx} style={styles.glassCard}>
+                  <View style={styles.cardHeaderRow}>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                      <View style={styles.courseIdBadge}>
+                        <Text style={styles.courseIdText}>{item.course_code}</Text>
                       </View>
-                      <TouchableOpacity onPress={() => handleDeleteItem(item.course_code || item.code)}>
-                        <Feather name="trash-2" size={18} color="#D23669" />
-                      </TouchableOpacity>
+                      <Text style={styles.courseName}>{item.course_name}</Text>
                     </View>
-                    <Text style={styles.itemName}>{item.course_name || item.name}</Text>
-                    <View style={styles.itemFooter}>
-                      <Text style={styles.itemMeta}>
-                        Sec: {item.section_number || item.sec} • {item.credits || item.course_credits} นก.
-                      </Text>
-                      <Text style={styles.itemTime}>
-                        {item.day_of_week} {item.start_time}:00
-                      </Text>
-                    </View>
+                    <TouchableOpacity style={styles.deleteButton} onPress={() => removeItem(item.course_code)}>
+                      <MaterialIcons name="delete-outline" size={20} color="#ba1a1a" />
+                    </TouchableOpacity>
                   </View>
-                ))}
 
-                <TouchableOpacity 
-                    style={styles.checkoutBtn} 
-                    onPress={() => Alert.alert("ยืนยัน", "ส่งข้อมูลลงทะเบียนไปยังระบบกลาง?", [
-                        {text: "ยกเลิก"},
-                        {text: "ตกลง", onPress: () => setView('SCHEDULE')}
-                    ])}
-                >
-                   <LinearGradient colors={['#D23669', '#a73355']} style={styles.checkoutGradient}>
-                      <Text style={styles.checkoutText}>ยืนยันการลงทะเบียนทั้งหมด</Text>
-                   </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            )}
-          </ScrollView>
+                  <View style={styles.cardInfoRow}>
+                    <View style={styles.infoItem}>
+                      <MaterialIcons name="class" size={16} color="#a73355" />
+                      <Text style={styles.infoText}>กลุ่มเรียน: {item.sections.join(", ")}</Text>
+                    </View>
+                    {item.time_info ? (
+                      <View style={styles.infoItem}>
+                        <MaterialIcons name="schedule" size={16} color="#a73355" />
+                        <Text style={[styles.infoText, { fontWeight: 'bold' }]}>{item.time_info}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Floating Confirm Button (โชว์เฉพาะตอนมีของในตะกร้า) */}
+        {!loadingCart && items.length > 0 && (
+          <View style={styles.floatingButtonContainer}>
+            <TouchableOpacity style={styles.confirmButton} onPress={confirmRegistration}>
+              <LinearGradient colors={["#7b5455", "#a73355"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnGradient}>
+                <MaterialIcons name="rocket-launch" size={20} color="white" />
+                <Text style={styles.confirmBtnText}>ยืนยันการลงทะเบียน</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Bottom Navigation */}
         <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navItem} onPress={() => setView('MENU')}><MaterialIcons name="home" size={24} color="#837375" /><Text style={styles.navText}>HOME</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => setView('MANUAL')}><MaterialIcons name="search" size={24} color="#837375" /><Text style={styles.navText}>SEARCH</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.navItemActive}><MaterialIcons name="shopping-cart" size={24} color="#a73355" /><Text style={styles.navTextActive}>CART</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => setView('SCHEDULE')}><MaterialIcons name="calendar-today" size={24} color="#837375" /><Text style={styles.navText}>SCHEDULE</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navItem} onPress={() => setView('MENU')}>
+            <MaterialIcons name="home" size={24} color="#837375" />
+            <Text style={styles.navText}>HOME</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.navItem} onPress={() => setView('SEARCH_COURSE')}>
+            <MaterialIcons name="search" size={24} color="#837375" />
+            <Text style={styles.navText}>SEARCH</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.navItemActive}>
+            <MaterialIcons name="shopping-cart" size={24} color="#a73355" />
+            <Text style={styles.navTextActive}>CART</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.navItem} onPress={() => setView('SCHEDULE')}>
+            <MaterialIcons name="calendar-today" size={24} color="#837375" />
+            <Text style={styles.navText}>SCHEDULE</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.logoutBtn} onPress={() => setView('MENU')}>
+            <MaterialIcons name="arrow-back" size={20} color="#a73355" />
+          </TouchableOpacity>
         </View>
 
       </SafeAreaView>
@@ -177,37 +199,38 @@ export default function CartScreen({ student, setView }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 15 },
-  headerTitle: { fontSize: 20, fontWeight: '900', color: '#7b5455' },
-  backButton: { padding: 8, backgroundColor: 'white', borderRadius: 12 },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 10, color: '#a73355', fontSize: 12 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 120, paddingTop: 20 },
-  summaryCard: { backgroundColor: 'white', borderRadius: 24, padding: 20, flexDirection: 'row', marginBottom: 25, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
-  summaryItem: { flex: 1, alignItems: 'center' },
-  divider: { width: 1, height: '100%', backgroundColor: '#F0F0F0' },
-  summaryLabel: { fontSize: 10, color: '#837375', marginBottom: 6, fontWeight: 'bold' },
-  summaryValue: { fontSize: 18, fontWeight: '900', color: '#1f1a1c' },
-  emptyContainer: { alignItems: 'center', marginTop: 50 },
-  emptyImage: { width: 140, height: 140, opacity: 0.3, marginBottom: 20 },
-  emptyText: { fontSize: 16, fontWeight: 'bold', color: '#837375', marginBottom: 25 },
-  goBtn: { backgroundColor: '#a73355', paddingHorizontal: 35, paddingVertical: 14, borderRadius: 25 },
-  goBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-  listContainer: { gap: 12 },
-  itemCard: { backgroundColor: 'white', borderRadius: 20, padding: 16, borderLeftWidth: 5, borderLeftColor: '#D23669', elevation: 2 },
-  itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  codeBadge: { backgroundColor: '#FDEEF4', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  codeText: { fontSize: 12, fontWeight: 'bold', color: '#D23669' },
-  itemName: { fontSize: 14, fontWeight: 'bold', color: '#1f1a1c', marginBottom: 12 },
-  itemFooter: { flexDirection: 'row', justifyContent: 'space-between' },
-  itemMeta: { fontSize: 11, color: '#837375' },
-  itemTime: { fontSize: 11, color: '#a73355', fontWeight: 'bold' },
-  checkoutBtn: { marginTop: 15, borderRadius: 20, overflow: 'hidden' },
-  checkoutGradient: { paddingVertical: 16, alignItems: 'center' },
-  checkoutText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  bottomNav: { position: 'absolute', bottom: 20, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 40, paddingHorizontal: 8, paddingVertical: 8, elevation: 10 },
-  navItemActive: { alignItems: 'center', backgroundColor: '#FDEEF4', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24 },
-  navTextActive: { fontSize: 9, fontWeight: 'bold', color: '#a73355', marginTop: 4 },
-  navItem: { alignItems: 'center', paddingHorizontal: 8, paddingVertical: 10 },
-  navText: { fontSize: 9, fontWeight: 'bold', color: '#837375', marginTop: 4 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, zIndex: 10 },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  backButton: { padding: 4, marginLeft: -4 },
+  headerTitle: { fontSize: 20, fontWeight: "900", color: "#7b5455", letterSpacing: -0.5 },
+  bellButton: { padding: 4 },
+  scrollContent: { paddingHorizontal: 24, paddingBottom: 180, paddingTop: 16 },
+  summaryHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 },
+  summarySub: { fontSize: 10, fontWeight: "bold", color: "#a73355", letterSpacing: 1 },
+  summaryTitle: { fontSize: 24, fontWeight: "900", color: "#1f1a1c", letterSpacing: -0.5 },
+  summaryRight: { alignItems: "flex-end" },
+  totalText: { fontSize: 12, color: "#514345", fontWeight: "500" },
+  totalCreditsText: { fontSize: 16, fontWeight: "bold", color: "#a73355" },
+  centerContainer: { flex: 1, justifyContent: "center", alignItems: "center", marginTop: 60 },
+  emptyText: { marginTop: 16, fontSize: 16, fontWeight: "bold", color: "#837375" },
+  cardsContainer: { gap: 16 },
+  glassCard: { backgroundColor: "rgba(255, 255, 255, 0.7)", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "rgba(214, 194, 196, 0.2)", shadowColor: "rgba(167, 51, 85, 0.05)", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 12, elevation: 2 },
+  cardHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
+  courseIdBadge: { alignSelf: "flex-start", backgroundColor: "rgba(255, 119, 153, 0.2)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginBottom: 6 },
+  courseIdText: { color: "#a73355", fontSize: 10, fontWeight: "bold", letterSpacing: 0.5 },
+  courseName: { fontSize: 16, fontWeight: "bold", color: "#1f1a1c" },
+  deleteButton: { padding: 8, backgroundColor: "#ffdad6", borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  cardInfoRow: { gap: 6 },
+  infoItem: { flexDirection: "row", alignItems: "center", gap: 8 },
+  infoText: { fontSize: 12, color: "#514345" },
+  floatingButtonContainer: { position: "absolute", bottom: 95, left: 24, right: 24, zIndex: 20 },
+  confirmButton: { borderRadius: 28, overflow: "hidden", shadowColor: "#a73355", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
+  btnGradient: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, gap: 12 },
+  confirmBtnText: { color: "white", fontSize: 16, fontWeight: "bold" },
+  bottomNav: { position: "absolute", bottom: 20, left: 16, right: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#ffffff", borderRadius: 40, paddingHorizontal: 8, paddingVertical: 8, shadowColor: "#a73355", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10, zIndex: 30 },
+  navItemActive: { alignItems: "center", backgroundColor: "#FDEEF4", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24 },
+  navTextActive: { fontSize: 9, fontWeight: "bold", color: "#a73355", marginTop: 4, letterSpacing: 0.5 },
+  navItem: { alignItems: "center", paddingHorizontal: 8, paddingVertical: 10 },
+  navText: { fontSize: 9, fontWeight: "bold", color: "#837375", marginTop: 4, letterSpacing: 0.5 },
+  logoutBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#FDEEF4", justifyContent: "center", alignItems: "center", marginRight: 4 },
 });
