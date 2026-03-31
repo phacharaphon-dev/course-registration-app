@@ -1,120 +1,164 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
-export default function RegistrationScreen({ navigation }) {
-  const courses = [
-    { id: 'CPE407', credit: '3 CREDITS', title: 'เครือข่ายสื่อสารคอมพิวเตอร์', left: '12 Left', theory: 'Sec 002 | Fri 09:00 - 10:40', lab: 'Sec 002 | Fri 13:00 - 15:30' },
-    { id: 'CPE495', credit: '3 CREDITS', title: 'หัวข้อพิเศษวิศวกรรมคอมพิวเตอร์', left: '5 Left', theory: 'Sec 001 | Mon 09:00 - 11:30', lab: null },
-    { id: 'CPE451', credit: '3 CREDITS', title: 'โปรแกรมประยุกต์', left: '20 Left', theory: 'Sec 002 | Tue 11:00 - 12:40', lab: 'Sec 002 | Tue 13:00 - 15:30' },
-    { id: 'CPE408', credit: '3 CREDITS', title: 'เครือข่ายสื่อสารคอมพิวเตอร์', left: '8 Left', theory: 'Sec 001 | Sat 09:00 - 10:40', lab: 'Sec 001 | Sat 13:00 - 15:30' },
+export default function RegistrationScreen({ student, setView }) {
+  
+  // ข้อมูลวิชาภาคยกชุดจำลอง (ตามรูปเป๊ะๆ)
+  const seriesCourses = [
+    { 
+      code: 'CPE407', credits: 3, name: 'เครือข่ายสื่อสารคอมพิวเตอร์', 
+      seatsLeft: 12, theory: 'Sec 002 | Fri 09:00 - 10:40', lab: 'Sec 002 | Fri 13:00 - 15:30' 
+    },
+    { 
+      code: 'CPE495', credits: 3, name: 'หัวข้อพิเศษวิศวกรรมคอมพิวเตอร์', 
+      seatsLeft: 5, theory: 'Sec 001 | Mon 09:00 - 11:30', lab: null 
+    },
+    { 
+      code: 'CPE451', credits: 3, name: 'โปรแกรมประยุกต์', 
+      seatsLeft: 20, theory: 'Sec 002 | Tue 11:00 - 12:40', lab: 'Sec 002 | Tue 13:00 - 15:30' 
+    },
+    { 
+      code: 'CPE408', credits: 3, name: 'เครือข่ายสื่อสารคอมพิวเตอร์', // อิงตามรูปเรฟเฟอเรนซ์
+      seatsLeft: 8, theory: 'Sec 001 | Sat 09:00 - 10:40', lab: 'Sec 001 | Sat 13:00 - 15:30' 
+    },
   ];
 
+  const handleConfirmBatch = () => {
+    Alert.alert(
+      "ยืนยันการลงทะเบียน", 
+      "คุณต้องการลงทะเบียนวิชาภาคฯ ยกชุด (4 รายวิชา) ใช่หรือไม่?",
+      [
+        { text: "ยกเลิก", style: "cancel" },
+        { text: "ตกลง", onPress: () => Alert.alert("สำเร็จ!", "ลงทะเบียนเรียบร้อยแล้ว") }
+      ]
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.navigate('Home')}
-        >
-          <MaterialIcons name="arrow-back" size={24} color="#D23669" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>ลงทะเบียนวิชาภาคฯ ยกชุด</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.studentInfo}>
-          <View style={styles.profileImageContainer}>
-            <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} style={styles.profileImage} />
-            <View style={styles.statusDot} />
-          </View>
-          <View>
-            <Text style={styles.welcomeTextSmall}>ยินดีต้อนรับ</Text>
-            <Text style={styles.welcomeTextLarge}>สวัสดี พชรพล</Text>
-          </View>
+    <LinearGradient colors={['#FDEEF4', '#FFF8F8']} style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        
+        {/* Header & Back Button */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setView('MENU')} style={styles.backButton}>
+            <MaterialIcons name="arrow-back" size={24} color="#a73355" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>ลงทะเบียนวิชาภาคฯ ยกชุด</Text>
+          <View style={{ width: 40 }} /> {/* Spacer */}
         </View>
 
-        <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>รายชื่อวิชาภาคฯ (Series)</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>4 รายวิชา</Text>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          
+          {/* Profile Section */}
+          <View style={styles.profileSection}>
+            <View style={styles.profileImageContainer}>
+              <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} style={styles.profileImage} />
+              <View style={styles.statusDot} />
+            </View>
+            <View>
+              <Text style={styles.welcomeSubText}>ยินดีต้อนรับ</Text>
+              <Text style={styles.welcomeText}>สวัสดี {student?.first_name || 'พชรพล'}</Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.courseContainer}>
-          {courses.map((course, index) => (
-            <View key={index} style={styles.courseCard}>
-              <View style={styles.cardTopRow}>
-                <Text style={styles.courseId}>{course.id} • {course.credit}</Text>
-                <View style={styles.seatBadge}>
-                  <Text style={styles.seatText}>{course.left}</Text>
+          {/* Section Title */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>รายชื่อวิชาภาคฯ (Series)</Text>
+            <View style={styles.badgeCount}>
+              <Text style={styles.badgeCountText}>{seriesCourses.length} รายวิชา</Text>
+            </View>
+          </View>
+
+          {/* Course List */}
+          {seriesCourses.map((course, idx) => (
+            <View key={idx} style={styles.courseCard}>
+              <View style={styles.courseHeader}>
+                <Text style={styles.courseCode}>{course.code} • {course.credits} CREDITS</Text>
+                <View style={styles.seatsBadge}>
+                  <Text style={styles.seatsText}>{course.seatsLeft} Left</Text>
                 </View>
               </View>
-              <Text style={styles.courseTitle}>{course.title}</Text>
+              <Text style={styles.courseName}>{course.name}</Text>
               
-              <View style={styles.scheduleRow}>
-                <MaterialIcons name="menu-book" size={16} color="#514345" />
-                <Text style={styles.scheduleText}>Theory: {course.theory}</Text>
-              </View>
-              
-              {course.lab && (
-                <View style={styles.scheduleRow}>
-                  <MaterialIcons name="science" size={16} color="#514345" />
-                  <Text style={styles.scheduleText}>Lab: {course.lab}</Text>
+              <View style={styles.timeInfoContainer}>
+                <View style={styles.timeRow}>
+                  <MaterialIcons name="menu-book" size={12} color="#D23669" />
+                  <Text style={styles.timeText}>Theory: {course.theory}</Text>
                 </View>
-              )}
+                {course.lab && (
+                  <View style={styles.timeRow}>
+                    <MaterialIcons name="science" size={12} color="#D23669" />
+                    <Text style={styles.timeText}>Lab: {course.lab}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           ))}
+
+          {/* Info/Warning Box */}
+          <View style={styles.infoBox}>
+            <MaterialIcons name="info-outline" size={20} color="#a73355" style={{ marginTop: 2 }} />
+            <Text style={styles.infoText}>
+              การลงทะเบียนยกชุดจะทำการจองที่นั่งให้คุณทันทีในเซกชันที่กำหนด กรุณาตรวจสอบเวลาเรียนที่ซ้อนทับกันก่อนกดยืนยัน
+            </Text>
+          </View>
+
+        </ScrollView>
+
+        {/* Floating Confirm Button */}
+        <View style={styles.bottomContainer}>
+          <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmBatch}>
+            <LinearGradient colors={['#D23669', '#a73355']} style={styles.confirmGradient} start={{x: 0, y: 0}} end={{x: 1, y: 0}}>
+              <FontAwesome5 name="bolt" size={18} color="white" style={{ marginRight: 8 }} />
+              <Text style={styles.confirmBtnText}>ยืนยันลงทะเบียนคลิกเดียว</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <Text style={styles.footerText}>CURATED BY SCHOLASTIC EDITORIAL TEAM</Text>
         </View>
 
-        <View style={styles.infoBanner}>
-          <MaterialIcons name="info" size={24} color="#D23669" />
-          <Text style={styles.infoText}>
-            การลงทะเบียนยกชุดจะทำการจองที่นั่งให้คุณทันทีในเซกชันที่กำหนด กรุณาตรวจสอบเวลาเรียนที่ซ้อนทับกันก่อนกดยืนยัน
-          </Text>
-        </View>
-
-        <TouchableOpacity style={styles.confirmButton}>
-          <MaterialIcons name="bolt" size={28} color="white" />
-          <Text style={styles.confirmButtonText}>ยืนยันลงทะเบียนคลิกเดียว</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.footerCredits}>CURATED BY SCHOLASTIC EDITORIAL TEAM</Text>
-
-      </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF5F7' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 },
-  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FCE8ED', justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
+  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(210, 54, 105, 0.1)', justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1f1a1c' },
-  scrollContent: { paddingBottom: 40 },
-  studentInfo: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, gap: 16 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 150 },
+  
+  profileSection: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 10, marginBottom: 25 },
   profileImageContainer: { position: 'relative' },
-  profileImage: { width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: 'white' },
-  statusDot: { position: 'absolute', bottom: 4, right: 4, width: 16, height: 16, backgroundColor: '#22c55e', borderRadius: 8, borderWidth: 2, borderColor: 'white' },
-  welcomeTextSmall: { fontSize: 11, fontWeight: 'bold', color: '#514345', opacity: 0.6 },
-  welcomeTextLarge: { fontSize: 22, fontWeight: '800', color: '#1f1a1c' },
-  listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 12 },
-  listTitle: { fontSize: 15, fontWeight: 'bold', color: '#1f1a1c' },
-  badge: { backgroundColor: '#FCE8ED', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
-  badgeText: { fontSize: 11, fontWeight: 'bold', color: '#D23669' },
-  courseContainer: { paddingHorizontal: 24, gap: 12 },
-  courseCard: { backgroundColor: 'white', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(210, 54, 105, 0.08)' },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
-  courseId: { fontSize: 13, fontWeight: 'bold', color: '#D23669', letterSpacing: 0.5 },
-  seatBadge: { backgroundColor: '#F3EDED', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  seatText: { fontSize: 11, fontWeight: 'bold', color: '#8E8284' },
-  courseTitle: { fontSize: 14, fontWeight: 'bold', color: '#1f1a1c', marginBottom: 8 },
-  scheduleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  scheduleText: { fontSize: 11, color: '#514345' },
-  infoBanner: { flexDirection: 'row', backgroundColor: '#FCE8ED', padding: 16, marginHorizontal: 24, marginTop: 24, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(210, 54, 105, 0.05)', gap: 12, alignItems: 'flex-start' },
-  infoText: { flex: 1, fontSize: 11, fontWeight: '500', color: '#514345', lineHeight: 18 },
-  confirmButton: { backgroundColor: '#D23669', flexDirection: 'row', paddingVertical: 20, marginHorizontal: 24, marginTop: 32, borderRadius: 20, justifyContent: 'center', alignItems: 'center', gap: 8, shadowColor: '#D23669', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
-  confirmButtonText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
-  footerCredits: { textAlign: 'center', fontSize: 10, fontWeight: 'bold', color: 'rgba(81, 67, 69, 0.4)', marginTop: 24, letterSpacing: 2 },
+  profileImage: { width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: 'white' },
+  statusDot: { position: 'absolute', bottom: 2, right: 2, width: 14, height: 14, backgroundColor: '#22c55e', borderRadius: 7, borderWidth: 2, borderColor: '#fff' },
+  welcomeSubText: { fontSize: 11, color: '#514345', fontWeight: 'bold', marginBottom: 2 },
+  welcomeText: { fontSize: 22, fontWeight: '900', color: '#1f1a1c' },
+
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1f1a1c' },
+  badgeCount: { backgroundColor: 'rgba(210, 54, 105, 0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  badgeCountText: { fontSize: 10, fontWeight: 'bold', color: '#a73355' },
+
+  courseCard: { backgroundColor: 'white', borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(210, 54, 105, 0.1)', elevation: 1, shadowColor: '#D23669', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
+  courseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  courseCode: { fontSize: 11, fontWeight: '900', color: '#a73355', letterSpacing: 0.5 },
+  seatsBadge: { backgroundColor: '#FFF0F0', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  seatsText: { fontSize: 9, fontWeight: 'bold', color: '#D23669' },
+  courseName: { fontSize: 14, fontWeight: 'bold', color: '#514345', marginBottom: 12 },
+  timeInfoContainer: { gap: 6 },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  timeText: { fontSize: 11, color: '#837375', fontWeight: '500' },
+
+  infoBox: { flexDirection: 'row', backgroundColor: 'rgba(210, 54, 105, 0.05)', padding: 16, borderRadius: 16, marginTop: 10, gap: 10, borderWidth: 1, borderColor: 'rgba(210, 54, 105, 0.1)' },
+  infoText: { flex: 1, fontSize: 11, color: '#514345', lineHeight: 18 },
+
+  bottomContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 20, paddingTop: 15, paddingBottom: 25, borderTopLeftRadius: 30, borderTopRightRadius: 30, elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: -5 }, shadowOpacity: 0.05, shadowRadius: 10 },
+  confirmBtn: { borderRadius: 16, overflow: 'hidden', marginBottom: 15 },
+  confirmGradient: { flexDirection: 'row', paddingVertical: 18, justifyContent: 'center', alignItems: 'center' },
+  confirmBtnText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  footerText: { textAlign: 'center', fontSize: 8, fontWeight: 'bold', color: '#A0A0A0', letterSpacing: 1.5 }
 });
